@@ -162,6 +162,13 @@ const insertKatexCSS = once(() => {
   document.head.appendChild(link)
 })
 
+const insertMermaidJS = once(() => {
+  const script = document.createElement("script")
+  script.src =
+    "https://registry.npmmirror.com/mermaid/11/files/dist/mermaid.min.js"
+  document.body.appendChild(script)
+})
+
 export function Markdown(props: {
   children?: string | ArrayBuffer
   class?: string
@@ -184,6 +191,10 @@ export function Markdown(props: {
     content = content.replace(/!\[.*?\]\((.*?)\)/g, (match) => {
       const name = match.match(/!\[(.*?)\]\(.*?\)/)![1]
       let url = match.match(/!\[.*?\]\((.*?)\)/)![1]
+      // 检查是否为 base64 编码的图片
+      if (url.startsWith("data:image/")) {
+        return match // 如果是 base64 编码的图片，直接返回原标签
+      }
       if (
         url.startsWith("http://") ||
         url.startsWith("https://") ||
@@ -209,9 +220,14 @@ export function Markdown(props: {
     on(md, () => {
       setShow(false)
       insertKatexCSS()
+      insertMermaidJS()
       setTimeout(() => {
         setShow(true)
         hljs.highlightAll()
+        window.mermaid &&
+          window.mermaid.run({
+            querySelector: ".language-mermaid",
+          })
         window.onMDRender && window.onMDRender()
       })
     }),
@@ -233,7 +249,11 @@ export function Markdown(props: {
         />
       </Show>
       <Show when={!isString}>
-        <EncodingSelect encoding={encoding()} setEncoding={setEncoding} />
+        <EncodingSelect
+          encoding={encoding()}
+          setEncoding={setEncoding}
+          referenceText={props.children}
+        />
       </Show>
       <MarkdownToc disabled={!props.toc} markdownRef={markdownRef()!} />
     </Box>
